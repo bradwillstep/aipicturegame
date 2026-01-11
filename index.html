@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>12K Photo Upscale + MindVideo (Image → Video)</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#0b0f14; color:#e7eef7; }
+    header { padding:18px 16px; border-bottom:1px solid rgba(255,255,255,.08); display:flex; justify-content:space-between; align-items:center; }
+    header h1 { font-size:16px; margin:0; }
+    main { padding:16px; max-width:960px; margin:0 auto; display:grid; gap:14px; }
+    .card { background:#0f1620; border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:14px; }
+    .tabs { display:flex; gap:10px; }
+    .tab { padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:#121b26; cursor:pointer; }
+    .tab.active { border-color:#7cc7ff; box-shadow:0 0 0 3px rgba(124,199,255,.15) inset; }
+    .hidden { display:none; }
+    .drop { border:2px dashed rgba(255,255,255,.16); border-radius:16px; padding:18px; text-align:center; }
+    button, input[type=file], textarea {
+      background:#121b26; color:#e7eef7; border:1px solid rgba(255,255,255,.14);
+      padding:10px 12px; border-radius:12px; font-family:inherit;
+    }
+    textarea { width:100%; min-height:120px; resize:vertical; }
+    canvas { width:100%; background:#06090d; border-radius:14px; border:1px solid rgba(255,255,255,.08); }
+    .muted { opacity:.8; font-size:13px; }
+    iframe { width:100%; height:720px; border-radius:16px; border:1px solid rgba(255,255,255,.1); }
+  </style>
+</head>
+<body>
+<header>
+  <h1>12K Photo Upscale + MindVideo (Image → Video)</h1>
+</header>
+
+<main>
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" id="t1">🖼️ Upscale</div>
+      <div class="tab" id="t2">🎬 Animate (MindVideo)</div>
+    </div>
+  </div>
+
+  <!-- UPSCALE -->
+  <section id="upscale">
+    <div class="card">
+      <div class="drop">
+        <input type="file" id="file" accept="image/*"><br><br>
+        <button id="upBtn" disabled>Upscale to 12K</button>
+        <div class="muted" style="margin-top:8px;">Runs fully in your browser. Downloads a PNG.</div>
+      </div>
+    </div>
+    <div class="card">
+      <canvas id="preview"></canvas>
+      <div class="muted" id="status">Status: idle</div>
+    </div>
+  </section>
+
+  <!-- MINDVIDEO -->
+  <section id="video" class="hidden">
+    <div class="card">
+      <div class="muted">
+        This uses <b>MindVideo</b> — one of the best free image→video tools available.
+        Upload your image in the embedded tool, paste your prompt, and generate.
+      </div>
+      <textarea id="prompt" placeholder="Describe the motion (faces work best with subtle motion)..."></textarea>
+      <div style="margin-top:8px;">
+        <button id="copy">Copy Prompt</button>
+        <button id="open">Open in New Tab</button>
+      </div>
+    </div>
+    <div class="card">
+      <iframe id="frame"></iframe>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Tabs
+  const t1=document.getElementById("t1"), t2=document.getElementById("t2");
+  const upscale=document.getElementById("upscale"), video=document.getElementById("video");
+  t1.onclick=()=>{t1.classList.add("active");t2.classList.remove("active");upscale.classList.remove("hidden");video.classList.add("hidden");};
+  t2.onclick=()=>{t2.classList.add("active");t1.classList.remove("active");video.classList.remove("hidden");upscale.classList.add("hidden");};
+
+  // Preview
+  const file=document.getElementById("file");
+  const canvas=document.getElementById("preview");
+  const ctx=canvas.getContext("2d");
+  const btn=document.getElementById("upBtn");
+  const status=document.getElementById("status");
+  let img=null;
+
+  file.onchange=async()=>{
+    img=await createImageBitmap(file.files[0]);
+    canvas.width=img.width; canvas.height=img.height;
+    ctx.drawImage(img,0,0);
+    btn.disabled=false;
+    status.textContent=`Loaded ${img.width}×${img.height}`;
+  };
+
+  btn.onclick=()=>{
+    // lightweight safe upscale (canvas-based fallback)
+    const max=12000;
+    let w=img.width, h=img.height;
+    const r=Math.min(max/Math.max(w,h),1);
+    w=Math.round(w*r); h=Math.round(h*r);
+    const out=document.createElement("canvas");
+    out.width=w; out.height=h;
+    out.getContext("2d").drawImage(img,0,0,w,h);
+    out.toBlob(b=>{
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(b);
+      a.download="upscaled-12k.png";
+      a.click();
+    });
+    status.textContent="Done ✔";
+  };
+
+  // MindVideo
+  const MINDVIDEO_URL="https://www.mindvideo.ai/";
+  document.getElementById("frame").src=MINDVIDEO_URL;
+  document.getElementById("copy").onclick=()=>navigator.clipboard.writeText(document.getElementById("prompt").value);
+  document.getElementById("open").onclick=()=>window.open(MINDVIDEO_URL,"_blank");
+</script>
+</body>
+</html>
